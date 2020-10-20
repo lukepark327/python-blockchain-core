@@ -16,12 +16,12 @@ class Blockchain():
         return self.new_block(
             index=0,
             timestamp=1603181003.,
-            prev_hash="0x0000",
-            nonce=23369,
+            prev_hash="0x" + "0" * 64,
+            nonce=206989,
             transactions=[
                 {
                     'from': "",
-                    'to': "0xAAAA",
+                    'to': "0x" + "a" * 64,
                     'amount': 50
                 }
             ]
@@ -195,8 +195,8 @@ if __name__ == "__main__":
 
     """non-empty transaction pool"""
     print("\n==== Mine with Txs ====")
-    bc1.new_transaction("0xAAAA", "0xBBBB", 30)
-    bc1.new_transaction("0xAAAA", "0xCCCC", 10)
+    bc1.new_transaction("0x" + "a" * 64, "0x" + "b" * 64, 30)
+    bc1.new_transaction("0x" + "a" * 64, "0x" + "c" * 64, 10)
 
     bc1.mine_block()
     pprint(bc1.chain)
