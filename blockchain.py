@@ -48,7 +48,7 @@ class Blockchain():
         nonce=None,
         transactions=None
     ):
-        index = index if index == 0 else len(self.chain)
+        index = index if index == 0 else index or len(self.chain)
         timestamp = timestamp or time()
         prev_hash = prev_hash or self.hash(self.last_block)
         transactions = transactions or self.transaction_pool
