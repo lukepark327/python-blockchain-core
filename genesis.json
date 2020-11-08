@@ -1,0 +1,12 @@
+{
+    "index": 0,
+    "timestamp": 1603181003,
+    "prev_hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "nonce": 295131,
+    "transactions": {
+        "sender": "",
+        "receiver": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "amount": 50,
+        "data": "Hello, Blockchain World!\n"
+    }
+}
