@@ -52,7 +52,6 @@ class BlockHeader():
     TODO: merkle root
     TODO: block header hash
     """
-    # @staticmethod
     # def hash(block):
     #     block_string = json.dumps(block, sort_keys=True).encode()
     #     return sha256(block_string).hexdigest()
@@ -68,7 +67,7 @@ class Block():
             transactions: list):
 
         self.header = BlockHeader(index, timestamp, prev_hash, nonce)
-        self.body = deepcopy(transactions)
+        self.body = deepcopy(transactions)  # self.body = transactions[:]
 
     def toDict(self):
         return {
@@ -89,13 +88,12 @@ class Blockchain():
     def init_genesis_block(self):
         with open('./genesis.json') as f:
             raw = json.load(f)
-        tx = Transaction(
-            raw['transactions']['sender'],
-            raw['transactions']['receiver'],
-            raw['transactions']['amount'],
-            raw['transactions']['data']
-        )
-        return Block(raw['index'], raw['timestamp'], raw['prev_hash'], raw['nonce'], [tx])
+
+        txs = []
+        for tx in raw['transactions']:
+            txs.append(Transaction(tx['sender'], tx['receiver'], tx['amount'], tx['data']))
+
+        return Block(raw['index'], raw['timestamp'], raw['prev_hash'], raw['nonce'], txs)
 
     def mine_block(
         self,
@@ -193,8 +191,8 @@ class Blockchain():
 
 
 # Find valid genesisBlock's nonce
-# if __name__ == "__main__":
-#     bc = Blockchain()
-#     gb = bc.init_genesis_block()
-#     nonce = bc.proof_of_work(gb.header.index, gb.header.timestamp, gb.header.prev_hash, gb.body)
-#     print(nonce)
+if __name__ == "__main__":
+    bc = Blockchain()
+    gb = bc.init_genesis_block()
+    nonce = bc.proof_of_work(gb.header.index, gb.header.timestamp, gb.header.prev_hash, gb.body)
+    print(nonce)
