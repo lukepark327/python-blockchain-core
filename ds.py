@@ -93,19 +93,27 @@ class Blockchain():
         for tx in raw['transactions']:
             txs.append(Transaction(tx['sender'], tx['receiver'], tx['amount'], tx['data']))
 
-        return Block(raw['index'], raw['timestamp'], raw['prev_hash'], raw['nonce'], txs)
+        return self.new_block(raw['index'], raw['timestamp'], raw['prev_hash'], raw['nonce'], txs)
 
     def mine_block(
         self,
+        miner,
         index=None,
         timestamp=None,
         prev_hash=None,
         nonce=None,
         transactions=None
     ):
-        mined_block = self.new_block(index, timestamp, prev_hash, nonce, transactions)
+        mining_tx = Transaction("0x0", miner, 50)
+        if transactions:
+            txs = deepcopy(transactions)
+        else:
+            txs = deepcopy(self.transaction_pool)
+            self.transaction_pool = []
+        txs.append(mining_tx)
+
+        mined_block = self.new_block(index, timestamp, prev_hash, nonce, txs)
         self.chain.append(mined_block)
-        self.transaction_pool = []
         return mined_block
 
     def new_block(
@@ -188,11 +196,3 @@ class Blockchain():
 
     def valid_transaction(self, tx):
         pass
-
-
-# Find valid genesisBlock's nonce
-if __name__ == "__main__":
-    bc = Blockchain()
-    gb = bc.init_genesis_block()
-    nonce = bc.proof_of_work(gb.header.index, gb.header.timestamp, gb.header.prev_hash, gb.body)
-    print(nonce)
