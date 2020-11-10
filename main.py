@@ -60,6 +60,7 @@ def resolve_fork():
 
 
 # Curl http://127.0.0.1:8327/blocks
+# | python -m json.tool
 @app.route('/blocks')
 def blocks():
     return jsonify({'res': [block.toDict() for block in bc.chain]}), 200
@@ -78,7 +79,7 @@ def block(index):
 # Curl -X POST http://127.0.0.1:8327/mine
 @app.route('/mine', methods=['POST'])
 def mine():
-    mined_block = bc.mine_block(myId)
+    mined_block = bc.mine_block(myId)  # TODO: myID => address
     return jsonify({'res': mined_block.toDict()}), 201
 
 
@@ -98,7 +99,15 @@ def transaction_new():
     else:
         index = bc.new_transaction(values['sender'], values['recipient'], values['amount'])
 
+    # TODO: Broadcast
+
     return jsonify({'res': index}), 201
+
+
+# Curl http://127.0.0.1:8327/pool
+@app.route('/transaction/pool')
+def transaction_pool():
+    return jsonify({'res': [tx.toDict() for tx in bc.transaction_pool]}), 200
 
 
 # Curl -X POST -H 'Content-Type: application/json'
@@ -141,6 +150,6 @@ def parser():
 if __name__ == "__main__":
     args = parser()
     port = args.port
-    myId = "0x" + str(port)  # Unique identifier
+    myId = "0x" + str(port)  # Unique identifier  # TODO
 
     app.run(host='0.0.0.0', port=port)
