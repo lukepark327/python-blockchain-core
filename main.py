@@ -3,8 +3,10 @@ Ref: https://github.com/dvf/blockchain
 """
 
 from ds import Transaction, BlockHeader, Block, Blockchain
+from wallet import Wallet
 
 import argparse
+from ecdsa import SigningKey, SECP256k1
 from urllib.parse import urlparse
 import requests
 from flask import Flask, request, jsonify
@@ -18,6 +20,11 @@ CORS(app)
 
 bc = Blockchain()
 nodes = set()
+
+
+global sk
+global vk
+global Addr
 
 
 def register_node(url):
@@ -48,14 +55,14 @@ def resolve_fork():
                             transaction['sender'],
                             transaction['receiver'],
                             transaction['amount'],
-                            transaction['data']
+                            transaction['data'],
+                            transaction['sign']
                         ) for transaction in block['body']
                     ]
                 ) for block in res.json()['res']
             ]
 
-            print(other_chain)
-
+            # print(other_chain)
             bc.longest_chain_rule(other_chain)
 
 
@@ -79,25 +86,25 @@ def block(index):
 # Curl -X POST http://127.0.0.1:8327/mine
 @app.route('/mine', methods=['POST'])
 def mine():
-    mined_block = bc.mine_block(myId)  # TODO: myID => address
+    mined_block = bc.mine_block(Addr)
     return jsonify({'res': mined_block.toDict()}), 201
 
 
 # Curl -X POST -H 'Content-Type: application/json'
 # http://127.0.0.1:8328/transaction/new
-# -d '{"sender": "0x1", "recipient": "0x2", "amount": 3, "data": "123"}'
+# -d '{"sender": "0x1", "receiver": "0x2", "amount": 3, "data": "123"}'
 @app.route('/transaction/new', methods=['POST'])
 def transaction_new():
     values = request.get_json()
 
-    required = ['sender', 'recipient', 'amount']
+    required = ['receiver', 'amount']
     if not all(k in values for k in required):
         return 'Missing values', 400
 
     if 'data' in values:
-        index = bc.new_transaction(values['sender'], values['recipient'], values['amount'], values['data'])
+        index = bc.new_transaction(sk, values['sender'] or Addr, values['receiver'], values['amount'], values['data'])
     else:
-        index = bc.new_transaction(values['sender'], values['recipient'], values['amount'])
+        index = bc.new_transaction(sk, values['sender'] or Addr, values['receiver'], values['amount'])
 
     # TODO: Broadcast
 
@@ -138,10 +145,17 @@ def consensus():
     return jsonify({'res': [block.toDict() for block in bc.chain]}), 201
 
 
+# Curl http://127.0.0.1:8327/wallet/address
+@app.route('/wallet/address')
+def address():
+    return jsonify({'res': Addr}), 200
+
+
 def parser():
     parser = argparse.ArgumentParser()
     # parser.add_argument('--ip', metavar='I', type=str, default="127.0.0.1")
     parser.add_argument('--port', metavar='P', type=str, default="8327")
+    parser.add_argument('--private_key', metavar='K', type=str, default=None)
 
     args = parser.parse_args()
     return args
@@ -150,6 +164,14 @@ def parser():
 if __name__ == "__main__":
     args = parser()
     port = args.port
-    myId = "0x" + str(port)  # Unique identifier  # TODO
+
+    wallet = Wallet(args.private_key)
+    Addr = wallet.public_key.decode()
+    print(Addr)
+
+    # Generate sk & vk
+    private_key = bytearray.fromhex(wallet.private_key)
+    sk = SigningKey.from_string(private_key, curve=SECP256k1)
+    vk = sk.verifying_key  # wallet.public_key == vk.to_string("compressed").hex()
 
     app.run(host='0.0.0.0', port=port)

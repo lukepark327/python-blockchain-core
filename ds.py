@@ -3,6 +3,7 @@ import json
 from time import time
 from copy import deepcopy
 from hashlib import sha256
+from ecdsa import VerifyingKey, SECP256k1
 
 
 class Transaction():
@@ -11,19 +12,22 @@ class Transaction():
             sender: str,
             receiver: str,
             amount: int,
-            data: str = None):
+            data: str = None,
+            sign=None):
 
         self.sender = sender
         self.receiver = receiver
         self.amount = amount
         self.data = data
+        self.sign = sign
 
     def toDict(self):
         return {
             'sender': self.sender,
             'receiver': self.receiver,
             'amount': self.amount,
-            'data': self.data
+            'data': self.data,
+            'sign': self.sign
         }
 
 
@@ -86,12 +90,15 @@ class Blockchain():
         self.transaction_pool = []
 
     def init_genesis_block(self):
+
+        # TODO: re-calculate nonce
+
         with open('./genesis.json') as f:
             raw = json.load(f)
 
         txs = []
         for tx in raw['transactions']:
-            txs.append(Transaction(tx['sender'], tx['receiver'], tx['amount'], tx['data']))
+            txs.append(Transaction(tx['sender'], tx['receiver'], tx['amount'], tx['data'], tx['sign']))
 
         return self.new_block(raw['index'], raw['timestamp'], raw['prev_hash'], raw['nonce'], txs)
 
@@ -104,13 +111,13 @@ class Blockchain():
         nonce=None,
         transactions=None
     ):
-        mining_tx = Transaction("0x0", miner, 50)
+        mining_tx = Transaction("", miner, 50)
         if transactions:
             txs = deepcopy(transactions)
         else:
             txs = deepcopy(self.transaction_pool)
             self.transaction_pool = []
-        txs.append(mining_tx)
+        txs.insert(0, mining_tx)
 
         mined_block = self.new_block(index, timestamp, prev_hash, nonce, txs)
         self.chain.append(mined_block)
@@ -145,8 +152,14 @@ class Blockchain():
         print('>>> nonce: %10d' % (block.header.nonce), '\t', 'hash: ', guess, end='\r')
         return guess[:4] == "0000"  # N is 4
 
-    def new_transaction(self, sender, recipient, amount, data=None):
-        tx = Transaction(sender, recipient, amount, data)
+    def new_transaction(self, sk, sender, receiver, amount, data=None):
+        tx = Transaction(sender, receiver, amount, data)
+
+        # sign
+        tx_string = json.dumps(tx.toDict(), sort_keys=True).encode()
+        tx_digest = sha256(tx_string).digest()
+        tx.sign = sk.sign(tx_digest).hex()
+
         self.transaction_pool.append(tx)
         return self.last_block.header.index + 1
 
@@ -179,12 +192,20 @@ class Blockchain():
         # Valid index & prev_hash
         if block.header.index == 0:
             if block.hash() != self.init_genesis_block().hash():
+                print(block.toDict())
+                print(self.init_genesis_block().toDict())
                 return False
         else:
             if prev_block.hash() != block.header.prev_hash:
                 return False
 
-        # TODO: Valid transactions
+        # Valid transactions
+        for tx in block.body:
+            if block.header.index == 0:
+                pass  # TODO: re-calculate genesis' tx sign.
+            else:
+                self.valid_transaction(tx)
+
         # TODO: Valid timestamp
 
         # Valid nonce
@@ -195,4 +216,19 @@ class Blockchain():
         return True
 
     def valid_transaction(self, tx):
-        pass
+        if tx.sender == '':
+            # mint
+            pass  # TODO: minting addr.
+        else:
+            raw_tx = Transaction(tx.sender, tx.receiver, tx.amount, tx.data)
+            raw_tx_string = json.dumps(raw_tx.toDict(), sort_keys=True).encode()
+            raw_tx_digest = sha256(raw_tx_string).digest()
+
+            vk = VerifyingKey.from_string(bytearray.fromhex(tx.sender), curve=SECP256k1)
+            return vk.verify(bytes(bytearray.fromhex(tx.sign)), raw_tx_digest)
+
+
+if __name__ == "__main__":
+    bc = Blockchain()
+    g = bc.init_genesis_block()
+    print(bc.proof_of_work(g.header.index, g.header.timestamp, g.header.prev_hash, g.body))
