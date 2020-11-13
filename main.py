@@ -23,7 +23,7 @@ nodes = set()
 
 
 global sk
-global vk
+# global vk
 global Addr
 
 
@@ -111,7 +111,7 @@ def transaction_new():
     return jsonify({'res': index}), 201
 
 
-# Curl http://127.0.0.1:8327/pool
+# Curl http://127.0.0.1:8327/transaction/pool
 @app.route('/transaction/pool')
 def transaction_pool():
     return jsonify({'res': [tx.toDict() for tx in bc.transaction_pool]}), 200
@@ -169,9 +169,9 @@ if __name__ == "__main__":
     Addr = wallet.public_key.decode()
     print(Addr)
 
-    # Generate sk & vk
+    # Generate sk  # & vk
     private_key = bytearray.fromhex(wallet.private_key)
     sk = SigningKey.from_string(private_key, curve=SECP256k1)
-    vk = sk.verifying_key  # wallet.public_key == vk.to_string("compressed").hex()
+    # vk = sk.verifying_key  # wallet.public_key == vk.to_string("compressed").hex()
 
     app.run(host='0.0.0.0', port=port)

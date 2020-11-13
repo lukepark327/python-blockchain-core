@@ -204,7 +204,8 @@ class Blockchain():
             if block.header.index == 0:
                 pass  # TODO: re-calculate genesis' tx sign.
             else:
-                self.valid_transaction(tx)
+                if not self.valid_transaction(tx):
+                    return True
 
         # TODO: Valid timestamp
 
@@ -218,14 +219,14 @@ class Blockchain():
     def valid_transaction(self, tx):
         if tx.sender == '':
             # mint
-            pass  # TODO: minting addr.
+            return True  # TODO: minting addr.
         else:
             raw_tx = Transaction(tx.sender, tx.receiver, tx.amount, tx.data)
             raw_tx_string = json.dumps(raw_tx.toDict(), sort_keys=True).encode()
             raw_tx_digest = sha256(raw_tx_string).digest()
 
             vk = VerifyingKey.from_string(bytearray.fromhex(tx.sender), curve=SECP256k1)
-            return vk.verify(bytes(bytearray.fromhex(tx.sign)), raw_tx_digest)
+            return vk.verify(bytearray.fromhex(tx.sign), raw_tx_digest)
 
 
 if __name__ == "__main__":
